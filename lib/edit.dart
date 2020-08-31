@@ -38,6 +38,7 @@ class _EditState extends State<Edit> {
   double _height = 10;
   int selectedIndex = -1;
   String fileName = "";
+  String editText = "";
   bool editMode = false;
   Color pickerColor = Color(0xff443a49);
   Color currentColor = Color(0xff443a49);
@@ -253,6 +254,114 @@ class _EditState extends State<Edit> {
     );
   }
 
+  showEditAlertDialog() {
+    // set up the button
+    Widget okButton = FlatButton(
+      child: Text("Save Changes"),
+      onPressed: () {
+        var obj = objects.elementAt(selectedIndex);
+        setState(() {
+          if (editText != "") {
+            obj.text = editText;
+          }
+          if (pickerColor != null) {
+            obj.color = pickerColor;
+          }
+        });
+        Navigator.of(context, rootNavigator: true).pop();
+      },
+    );
+    Widget field = SingleChildScrollView(
+      child: Column(
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: FlatButton(
+                child: Text("edit color"),
+                color: Colors.red,
+                onPressed: () {
+                  showColorPickerDialog();
+                }),
+          ),
+          Text("Enter text"),
+          TextField(
+            onChanged: (text) {
+              setState(() {
+                editText = text;
+              });
+            },
+          )
+        ],
+      ),
+    );
+
+    // set up the AlertDialog
+    AlertDialog alert = AlertDialog(
+      title: Text("Edit color and text"),
+      actions: [okButton],
+      content: field,
+    );
+
+    // show the dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+  }
+
+  showTextAlertDialog() {
+    // set up the button
+    Widget okButton = FlatButton(
+      child: Text("Ok"),
+      onPressed: () {
+        double xPosUpdated = xPos + _image.height.toDouble() * 0.025;
+        double yPosUpdated = yPos + _image.height.toDouble() * 0.045;
+        int angle = 0;
+        if (_height > _width) angle = 90;
+        if (editText != "" && pickerColor != null) {
+          Oval o = new Oval(pickerColor, xPosUpdated, yPosUpdated, _width,
+              _height, editText, angle);
+          setState(() {
+            objects.add(o);
+          });
+        }
+
+        Navigator.of(context, rootNavigator: true).pop();
+      },
+    );
+    Widget field = SingleChildScrollView(
+      child: Column(
+        children: <Widget>[
+          Text("Enter text"),
+          TextField(
+            onChanged: (text) {
+              setState(() {
+                editText = text;
+              });
+            },
+          )
+        ],
+      ),
+    );
+
+    // set up the AlertDialog
+    AlertDialog alert = AlertDialog(
+      title: Text("Text value"),
+      actions: [okButton],
+      content: field,
+    );
+
+    // show the dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+  }
+
   showSaveFileAlertDialog() {
     Widget okButton = FlatButton(
         child: Text("Upload"),
@@ -386,7 +495,11 @@ class _EditState extends State<Edit> {
                             },
                             onTap: () {
                               if (editMode) {
-                                print(selectedIndex);
+                                setState(() {
+                                  editText = "";
+                                  pickerColor = null;
+                                });
+                                showEditAlertDialog();
                               }
                             },
                             child: Stack(
@@ -445,21 +558,7 @@ class _EditState extends State<Edit> {
                               FlatButton(
                                 child: Icon(Icons.add_location),
                                 onPressed: () {
-                                  double xPosUpdated =
-                                      xPos + _image.height.toDouble() * 0.025;
-                                  double yPosUpdated =
-                                      yPos + _image.height.toDouble() * 0.045;
-                                  int angle = 0;
-                                  if (_height > _width) angle = 90;
-                                  Oval o = new Oval(
-                                      pickerColor,
-                                      xPosUpdated,
-                                      yPosUpdated,
-                                      _width,
-                                      _height,
-                                      "Hellow",
-                                      angle);
-                                  objects.add(o);
+                                  showTextAlertDialog();
                                 },
                               ),
                               FlatButton(
