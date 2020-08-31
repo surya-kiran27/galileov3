@@ -36,11 +36,12 @@ class _EditState extends State<Edit> {
   double temp, humidity;
   double _width = 10;
   double _height = 10;
+  int selectedIndex = -1;
   String fileName = "";
+  bool editMode = false;
   Color pickerColor = Color(0xff443a49);
   Color currentColor = Color(0xff443a49);
   LongPressStartDetails _tapPosition;
-  TapDownDetails tapDownDetails;
   double x;
   List<Oval> objects = new List();
   final drive = GoogleDrive();
@@ -80,7 +81,7 @@ class _EditState extends State<Edit> {
     showInSnackBar("Saving image...");
     ui.PictureRecorder recorder = ui.PictureRecorder();
     Canvas canvas = Canvas(recorder);
-    ImageEditor painter = ImageEditor(this._image, objects, tapDownDetails);
+    ImageEditor painter = ImageEditor(this._image, objects);
     Size s = new Size(_image.width.toDouble(), _image.height.toDouble());
     painter.paint(canvas, s);
     ui.Image img =
@@ -331,6 +332,16 @@ class _EditState extends State<Edit> {
                               showBackAlertDialog(context);
                             },
                           ),
+                          FlatButton(
+                            color: Colors.amber,
+                            child: Text(!editMode ? "Edit Mode" : "close",
+                                style: TextStyle(color: Colors.white)),
+                            onPressed: () {
+                              setState(() {
+                                editMode = !editMode;
+                              });
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -350,7 +361,6 @@ class _EditState extends State<Edit> {
                               setState(() {
                                 _tapPosition = details;
                               });
-                              print(details.globalPosition);
                             },
                             onLongPress: () {
                               xPos = _tapPosition.localPosition.dx -
@@ -359,9 +369,25 @@ class _EditState extends State<Edit> {
                                   _image.height.toDouble() * 0.05;
                             },
                             onTapDown: (details) {
-                              setState(() {
-                                tapDownDetails = details;
-                              });
+                              if (editMode) {
+                                final index = objects.lastIndexWhere((obj) {
+                                  final rect = Rect.fromCenter(
+                                      center: Offset(obj.x, obj.y),
+                                      height: obj.height,
+                                      width: obj.width);
+                                  return rect.contains(Offset(
+                                      details.localPosition.dx,
+                                      details.localPosition.dy));
+                                });
+                                setState(() {
+                                  selectedIndex = index;
+                                });
+                              }
+                            },
+                            onTap: () {
+                              if (editMode) {
+                                print(selectedIndex);
+                              }
                             },
                             child: Stack(
                               fit: StackFit.expand, // add this
@@ -373,68 +399,78 @@ class _EditState extends State<Edit> {
                                   child: CustomPaint(
                                     size: Size(_image.width.toDouble(),
                                         _image.height.toDouble()),
-                                    painter: ImageEditor(
-                                        _image, objects, tapDownDetails),
+                                    painter: ImageEditor(_image, objects),
                                     child: Container(),
                                   ),
                                 ),
-                                Positioned(
-                                  top: yPos,
-                                  left: xPos,
-                                  child: Icon(Icons.location_on,
-                                      color: Colors.red,
-                                      size: _image.height.toDouble() * 0.05),
-                                ),
+                                !editMode
+                                    ? Positioned(
+                                        top: yPos,
+                                        left: xPos,
+                                        child: Icon(Icons.location_on,
+                                            color: Colors.red,
+                                            size: _image.height.toDouble() *
+                                                0.05),
+                                      )
+                                    : SizedBox.shrink()
                               ],
                             ),
                           ),
                         ),
                       ),
                     ),
-                    ButtonBar(
-                      buttonTextTheme: ButtonTextTheme.accent,
-                      alignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        FlatButton(
-                          child: Icon(Icons.undo),
-                          onPressed: () {
-                            setState(() {
-                              if (objects.length >= 1)
-                                objects.removeLast();
-                              else {
-                                showInSnackBar("Points are empty");
-                              }
-                            });
-                          },
-                        ),
-                        FlatButton(
-                          child: Icon(Icons.adjust),
-                          onPressed: () {
-                            showCircleRadiusAlertDialog();
-                          },
-                        ),
-                        FlatButton(
-                          child: Icon(Icons.add_location),
-                          onPressed: () {
-                            double xPosUpdated =
-                                xPos + _image.height.toDouble() * 0.025;
-                            double yPosUpdated =
-                                yPos + _image.height.toDouble() * 0.045;
-                            int angle = 0;
-                            if (_height > _width) angle = 90;
-                            Oval o = new Oval(pickerColor, xPosUpdated,
-                                yPosUpdated, _width, _height, "Hellow", angle);
-                            objects.add(o);
-                          },
-                        ),
-                        FlatButton(
-                          child: Icon(Icons.save),
-                          onPressed: () async {
-                            showSaveFileAlertDialog();
-                          },
-                        )
-                      ],
-                    )
+                    !editMode
+                        ? ButtonBar(
+                            buttonTextTheme: ButtonTextTheme.accent,
+                            alignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              FlatButton(
+                                child: Icon(Icons.undo),
+                                onPressed: () {
+                                  setState(() {
+                                    if (objects.length >= 1)
+                                      objects.removeLast();
+                                    else {
+                                      showInSnackBar("Points are empty");
+                                    }
+                                  });
+                                },
+                              ),
+                              FlatButton(
+                                child: Icon(Icons.adjust),
+                                onPressed: () {
+                                  showCircleRadiusAlertDialog();
+                                },
+                              ),
+                              FlatButton(
+                                child: Icon(Icons.add_location),
+                                onPressed: () {
+                                  double xPosUpdated =
+                                      xPos + _image.height.toDouble() * 0.025;
+                                  double yPosUpdated =
+                                      yPos + _image.height.toDouble() * 0.045;
+                                  int angle = 0;
+                                  if (_height > _width) angle = 90;
+                                  Oval o = new Oval(
+                                      pickerColor,
+                                      xPosUpdated,
+                                      yPosUpdated,
+                                      _width,
+                                      _height,
+                                      "Hellow",
+                                      angle);
+                                  objects.add(o);
+                                },
+                              ),
+                              FlatButton(
+                                child: Icon(Icons.save),
+                                onPressed: () async {
+                                  showSaveFileAlertDialog();
+                                },
+                              )
+                            ],
+                          )
+                        : SizedBox.shrink()
                   ],
                 )
               : Center(
@@ -454,6 +490,7 @@ class Oval {
   double width;
   double height;
   String text;
+  Rect rect;
   int angle;
   Oval(color, x, y, width, height, text, angle) {
     this.color = color;
@@ -470,8 +507,8 @@ class ImageEditor extends CustomPainter {
   ui.Image image;
   List<Oval> objects = new List();
   Picture picture;
-  final TapDownDetails tapDownDetails;
-  ImageEditor(this.image, this.objects, this.tapDownDetails) : super();
+  int currTouch;
+  ImageEditor(this.image, this.objects) : super();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -479,7 +516,7 @@ class ImageEditor extends CustomPainter {
 
     Paint paint = new Paint()..color = Colors.yellow;
     canvas.drawImage(image, Offset.zero, paint);
-    int i = 0;
+
     for (var item in objects) {
       paint = new Paint()..color = item.color;
       final rect = Rect.fromCenter(
@@ -488,13 +525,8 @@ class ImageEditor extends CustomPainter {
           width: item.width);
 
       canvas.drawOval(rect, paint);
-      if (rect.contains(Offset(
-          tapDownDetails.localPosition.dx, tapDownDetails.localPosition.dy))) {
-        print(i);
-      }
       drawText(canvas, item.text, item.x, item.y, item.angle.toDouble(),
           item.width, item.height);
-      i++;
     }
   }
 
