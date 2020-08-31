@@ -37,7 +37,10 @@ class _EditState extends State<Edit> {
   double _width = 10;
   double _height = 10;
   String fileName = "";
+  Color pickerColor = Color(0xff443a49);
+  Color currentColor = Color(0xff443a49);
   LongPressStartDetails _tapPosition;
+  TapDownDetails tapDownDetails;
   double x;
   List<Oval> objects = new List();
   final drive = GoogleDrive();
@@ -77,7 +80,7 @@ class _EditState extends State<Edit> {
     showInSnackBar("Saving image...");
     ui.PictureRecorder recorder = ui.PictureRecorder();
     Canvas canvas = Canvas(recorder);
-    ImageEditor painter = ImageEditor(this._image, objects);
+    ImageEditor painter = ImageEditor(this._image, objects, tapDownDetails);
     Size s = new Size(_image.width.toDouble(), _image.height.toDouble());
     painter.paint(canvas, s);
     ui.Image img =
@@ -147,6 +150,36 @@ class _EditState extends State<Edit> {
     );
   }
 
+  void changeColor(Color color) {
+    setState(() => pickerColor = color);
+  }
+
+  showColorPickerDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Pick a color!'),
+          content: SingleChildScrollView(
+            child: BlockPicker(
+              pickerColor: currentColor,
+              onColorChanged: changeColor,
+            ),
+          ),
+          actions: <Widget>[
+            FlatButton(
+              child: const Text('Got it'),
+              onPressed: () {
+                setState(() => currentColor = pickerColor);
+                Navigator.of(context, rootNavigator: true).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   showCircleRadiusAlertDialog() {
     // set up the button
     Widget okButton = FlatButton(
@@ -158,9 +191,18 @@ class _EditState extends State<Edit> {
     Widget field = SingleChildScrollView(
       child: Column(
         children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: FlatButton(
+                child: Text("Choose color"),
+                color: Colors.red,
+                onPressed: () {
+                  showColorPickerDialog();
+                }),
+          ),
           Text("Width"),
           Container(
-            height: 200,
+            height: 50,
             width: 300,
             child: FlutterSlider(
               values: [_width],
@@ -176,7 +218,7 @@ class _EditState extends State<Edit> {
           ),
           Text("Height"),
           Container(
-            height: 200,
+            height: 50,
             width: 300,
             child: FlutterSlider(
               values: [_height],
@@ -196,7 +238,7 @@ class _EditState extends State<Edit> {
 
     // set up the AlertDialog
     AlertDialog alert = AlertDialog(
-      title: Text("Circle radius"),
+      title: Text("Circle radius And Color"),
       actions: [okButton],
       content: field,
     );
@@ -311,11 +353,15 @@ class _EditState extends State<Edit> {
                               print(details.globalPosition);
                             },
                             onLongPress: () {
-                              print("check");
                               xPos = _tapPosition.localPosition.dx -
                                   _image.height.toDouble() * 0.03;
                               yPos = _tapPosition.localPosition.dy -
                                   _image.height.toDouble() * 0.05;
+                            },
+                            onTapDown: (details) {
+                              setState(() {
+                                tapDownDetails = details;
+                              });
                             },
                             child: Stack(
                               fit: StackFit.expand, // add this
@@ -327,7 +373,8 @@ class _EditState extends State<Edit> {
                                   child: CustomPaint(
                                     size: Size(_image.width.toDouble(),
                                         _image.height.toDouble()),
-                                    painter: ImageEditor(_image, objects),
+                                    painter: ImageEditor(
+                                        _image, objects, tapDownDetails),
                                     child: Container(),
                                   ),
                                 ),
@@ -375,7 +422,7 @@ class _EditState extends State<Edit> {
                                 yPos + _image.height.toDouble() * 0.045;
                             int angle = 0;
                             if (_height > _width) angle = 90;
-                            Oval o = new Oval(Colors.red, xPosUpdated,
+                            Oval o = new Oval(pickerColor, xPosUpdated,
                                 yPosUpdated, _width, _height, "Hellow", angle);
                             objects.add(o);
                           },
@@ -423,7 +470,8 @@ class ImageEditor extends CustomPainter {
   ui.Image image;
   List<Oval> objects = new List();
   Picture picture;
-  ImageEditor(this.image, this.objects) : super();
+  final TapDownDetails tapDownDetails;
+  ImageEditor(this.image, this.objects, this.tapDownDetails) : super();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -431,7 +479,7 @@ class ImageEditor extends CustomPainter {
 
     Paint paint = new Paint()..color = Colors.yellow;
     canvas.drawImage(image, Offset.zero, paint);
-
+    int i = 0;
     for (var item in objects) {
       paint = new Paint()..color = item.color;
       final rect = Rect.fromCenter(
@@ -440,8 +488,13 @@ class ImageEditor extends CustomPainter {
           width: item.width);
 
       canvas.drawOval(rect, paint);
+      if (rect.contains(Offset(
+          tapDownDetails.localPosition.dx, tapDownDetails.localPosition.dy))) {
+        print(i);
+      }
       drawText(canvas, item.text, item.x, item.y, item.angle.toDouble(),
           item.width, item.height);
+      i++;
     }
   }
 

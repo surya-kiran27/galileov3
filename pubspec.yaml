@@ -39,6 +39,7 @@ dependencies:
   shared_preferences: ^0.5.8
   flutter_colorpicker: ^0.3.4
   flutter_dotenv: ^2.1.0
+  touchable: ^0.2.0
 
 dev_dependencies:
   flutter_test:
