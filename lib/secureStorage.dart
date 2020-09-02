@@ -16,7 +16,9 @@ class SecureStorage {
   //Get Saved Credentials
   Future<Map<String, dynamic>> getCredentials() async {
     var result = await storage.readAll();
+    result.remove("dropboxAccessToken");
     if (result.length == 0) return null;
+
     return result;
   }
 

@@ -19,6 +19,7 @@ class GoogleDrive {
   //Get Authenticated Http Client
   Future<http.Client> getHttpClient() async {
     var credentials = await storage.getCredentials();
+    print(credentials);
     if (credentials == null) {
       //Needs user authentication
       //Save Credentials

@@ -40,6 +40,7 @@ dependencies:
   flutter_colorpicker: ^0.3.4
   flutter_dotenv: ^2.1.0
   touchable: ^0.2.0
+  dropbox_client: ^0.7.1
 
 dev_dependencies:
   flutter_test:
@@ -57,8 +58,8 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/images/sampleFloorPlan.png
     - .env
+    - assets/images/sampleFloorPlan.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

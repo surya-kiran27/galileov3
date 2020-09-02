@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
@@ -7,16 +6,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:galileov3/googleDrive.dart';
 import 'package:galileov3/main.dart';
-import 'package:googleapis/cloudsearch/v1.dart';
 import 'dart:ui' as ui;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zoom_widget/zoom_widget.dart';
 import 'package:flutter_xlider/flutter_xlider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:dropbox_client/dropbox_client.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:math';
 
-const directoryName = 'Galileo';
+String dropbox_clientId = DotEnv().env['APP_KEY'];
+String dropbox_key = DotEnv().env['APP_KEY'];
+String dropbox_secret = DotEnv().env['APP_SECRET'];
 
 class Edit extends StatefulWidget {
   final File image;
@@ -43,16 +45,26 @@ class _EditState extends State<Edit> {
   Color pickerColor = Color(0xff443a49);
   Color currentColor = Color(0xff443a49);
   LongPressStartDetails _tapPosition;
+  String accessToken = "";
   double x;
   List<Oval> objects = new List();
   final drive = GoogleDrive();
   final _random = new Random();
+  final storage = FlutterSecureStorage();
 
   @override
   void initState() {
     _loadImage();
+    initDropbox();
   }
 
+  //intialize dropBox
+  Future initDropbox() async {
+    await Dropbox.init(dropbox_clientId, dropbox_key, dropbox_secret);
+    accessToken = await storage.read(key: "dropboxAccessToken");
+  }
+
+  //get Next Random Value for temperature
   int next(int min, int max) => min + _random.nextInt(max - min);
 
   _loadImage() async {
@@ -78,6 +90,67 @@ class _EditState extends State<Edit> {
             borderRadius: BorderRadius.all(Radius.circular(5)))));
   }
 
+  Future<bool> checkAuthorized(bool authorize) async {
+    final token = await Dropbox.getAccessToken();
+    if (token != null) {
+      if (accessToken == null || accessToken.isEmpty) {
+        accessToken = token;
+        storage.write(key: 'dropboxAccessToken', value: accessToken);
+      }
+      return true;
+    }
+    if (authorize) {
+      if (accessToken != null && accessToken.isNotEmpty) {
+        await Dropbox.authorizeWithAccessToken(accessToken);
+        final token = await Dropbox.getAccessToken();
+        if (token != null) {
+          return true;
+        }
+      } else {
+        await Dropbox.authorize();
+      }
+    }
+    return false;
+  }
+
+  Future uploadDropBox() async {
+    if (await checkAuthorized(true)) {
+      String directory = await ExtStorage.getExternalStoragePublicDirectory(
+          ExtStorage.DIRECTORY_DOCUMENTS);
+      String path = directory + "/GalileoV3" + '/${fileName}.png';
+
+      if (FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound) {
+        final result = await Dropbox.upload(path, '/' + '${fileName}.png',
+            (uploaded, total) {
+          print('progress $uploaded / $total');
+        });
+        print("test");
+        print(result);
+      } else {
+        showInSnackBar("File not found..please save locally first");
+      }
+    }
+  }
+
+  uploadDrive() async {
+    String directory = await ExtStorage.getExternalStoragePublicDirectory(
+        ExtStorage.DIRECTORY_DOCUMENTS);
+    String path = directory + "/GalileoV3" + '/${fileName}.png';
+    File upload = new File(path);
+    if (FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound) {
+      showInSnackBar("Uploading please wait...");
+      var res = await drive.upload(upload);
+      if (res != null)
+        showInSnackBar("File uploaded to drive ");
+      else {
+        showInSnackBar("Failed to upload");
+      }
+    } else {
+      showInSnackBar("File not found..please save locally first");
+    }
+  }
+
+  //saving canvas to PNG file
   void saveImage() async {
     showInSnackBar("Saving image...");
     ui.PictureRecorder recorder = ui.PictureRecorder();
@@ -98,24 +171,17 @@ class _EditState extends State<Edit> {
         print("check saving");
         String directory = await ExtStorage.getExternalStoragePublicDirectory(
             ExtStorage.DIRECTORY_DOCUMENTS);
-        String path = directory + "/Galileo";
+        String path = directory + "/GalileoV3";
 
         await Directory('$path').create(recursive: true);
 
         File upload = await File('$path/${fileName}.png')
             .writeAsBytes(pngBytes.buffer.asInt8List());
         showInSnackBar("Saved at " + upload.path);
-        showInSnackBar("Uploading please wait...");
-        var res = await drive.upload(upload);
-        if (res != null)
-          showInSnackBar("File uploaded to drive ");
-        else {
-          showInSnackBar("Failed to upload");
-        }
       }
     } catch (e) {
       print(e);
-      showInSnackBar("Failed to get downloads directory");
+      showInSnackBar("Failed to get documents directory");
     }
   }
 
@@ -150,10 +216,6 @@ class _EditState extends State<Edit> {
         return alert;
       },
     );
-  }
-
-  void changeColor(Color color) {
-    setState(() => pickerColor = color);
   }
 
   showColorPickerDialog() {
@@ -363,12 +425,32 @@ class _EditState extends State<Edit> {
   }
 
   showSaveFileAlertDialog() {
-    Widget okButton = FlatButton(
-        child: Text("Upload"),
+    Widget uploadGdrive = FlatButton(
+        child: Text("Upload to drive"),
+        onPressed: () async {
+          if (fileName != "") {
+            Navigator.of(context, rootNavigator: true).pop();
+            await uploadDrive();
+          } else {
+            showInSnackBar("Invalid file name");
+          }
+        });
+    Widget saveLocal = FlatButton(
+        child: Text("Save Locally"),
         onPressed: () async {
           if (fileName != "") {
             Navigator.of(context, rootNavigator: true).pop();
             saveImage();
+          } else {
+            showInSnackBar("Invalid file name");
+          }
+        });
+    Widget uploadBox = FlatButton(
+        child: Text("Upload to dropbox"),
+        onPressed: () async {
+          if (fileName != "") {
+            Navigator.of(context, rootNavigator: true).pop();
+            uploadDropBox();
           } else {
             showInSnackBar("Invalid file name");
           }
@@ -397,7 +479,7 @@ class _EditState extends State<Edit> {
     // set up the AlertDialog
     AlertDialog alert = AlertDialog(
       title: Text("Enter File Name"),
-      actions: [cancelButton, okButton],
+      actions: [cancelButton, saveLocal, uploadGdrive, uploadBox],
       content: field,
     );
 
@@ -410,9 +492,13 @@ class _EditState extends State<Edit> {
     );
   }
 
+  //change picked color
+  void changeColor(Color color) {
+    setState(() => pickerColor = color);
+  }
+
   @override
   dispose() {
-    // you need this
     super.dispose();
   }
 
