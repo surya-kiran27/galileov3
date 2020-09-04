@@ -52,6 +52,7 @@ class GoogleDrive {
       String pageToken = null;
       bool found = false;
       String folderID = "";
+      //searh for folder named galileo if it was created before
       do {
         ga.FileList result = await drive.files.list(
             q: "mimeType='application/vnd.google-apps.folder' and name='Galileo' and trashed=false",
@@ -67,6 +68,7 @@ class GoogleDrive {
         });
         pageToken = result.nextPageToken;
       } while (pageToken != null);
+      //if not found create a new folder
       if (!found) {
         var _createFolder = await drive.files.create(
           ga.File()

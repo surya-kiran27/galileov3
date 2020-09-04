@@ -14,7 +14,6 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:dropbox_client/dropbox_client.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:math';
 
 String dropbox_clientId = DotEnv().env['APP_KEY'];
 String dropbox_key = DotEnv().env['APP_KEY'];
@@ -33,6 +32,7 @@ class _EditState extends State<Edit> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _zoomWidget = GlobalKey();
   ui.Image _image;
+  //touch positions on screen
   double xPos = 0.0;
   double yPos = 0.0;
   double temp, humidity;
@@ -49,7 +49,6 @@ class _EditState extends State<Edit> {
   double x;
   List<Oval> objects = new List();
   final drive = GoogleDrive();
-  final _random = new Random();
   final storage = FlutterSecureStorage();
 
   @override
@@ -61,11 +60,9 @@ class _EditState extends State<Edit> {
   //intialize dropBox
   Future initDropbox() async {
     await Dropbox.init(dropbox_clientId, dropbox_key, dropbox_secret);
+
     accessToken = await storage.read(key: "dropboxAccessToken");
   }
-
-  //get Next Random Value for temperature
-  int next(int min, int max) => min + _random.nextInt(max - min);
 
   _loadImage() async {
     try {
@@ -92,9 +89,12 @@ class _EditState extends State<Edit> {
 
   Future<bool> checkAuthorized(bool authorize) async {
     final token = await Dropbox.getAccessToken();
+
     if (token != null) {
       if (accessToken == null || accessToken.isEmpty) {
-        accessToken = token;
+        setState(() {
+          accessToken = token;
+        });
         storage.write(key: 'dropboxAccessToken', value: accessToken);
       }
       return true;
@@ -117,7 +117,7 @@ class _EditState extends State<Edit> {
     if (await checkAuthorized(true)) {
       String directory = await ExtStorage.getExternalStoragePublicDirectory(
           ExtStorage.DIRECTORY_DOCUMENTS);
-      String path = directory + "/GalileoV3" + '/${fileName}.png';
+      String path = directory + "/galileo1" + '/${fileName}.png';
 
       if (FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound) {
         final result = await Dropbox.upload(path, '/' + '${fileName}.png',
@@ -126,6 +126,7 @@ class _EditState extends State<Edit> {
         });
         print("test");
         print(result);
+        showInSnackBar("File uploaded to dropbox");
       } else {
         showInSnackBar("File not found..please save locally first");
       }
@@ -135,7 +136,7 @@ class _EditState extends State<Edit> {
   uploadDrive() async {
     String directory = await ExtStorage.getExternalStoragePublicDirectory(
         ExtStorage.DIRECTORY_DOCUMENTS);
-    String path = directory + "/GalileoV3" + '/${fileName}.png';
+    String path = directory + "/galileo1" + '/${fileName}.png';
     File upload = new File(path);
     if (FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound) {
       showInSnackBar("Uploading please wait...");
@@ -171,7 +172,7 @@ class _EditState extends State<Edit> {
         print("check saving");
         String directory = await ExtStorage.getExternalStoragePublicDirectory(
             ExtStorage.DIRECTORY_DOCUMENTS);
-        String path = directory + "/GalileoV3";
+        String path = directory + "/galileo1";
 
         await Directory('$path').create(recursive: true);
 
@@ -428,18 +429,39 @@ class _EditState extends State<Edit> {
     Widget uploadGdrive = FlatButton(
         child: Text("Upload to drive"),
         onPressed: () async {
+          Navigator.of(context, rootNavigator: true).pop();
           if (fileName != "") {
-            Navigator.of(context, rootNavigator: true).pop();
             await uploadDrive();
           } else {
             showInSnackBar("Invalid file name");
           }
         });
+    Widget logoutDrive = FlatButton(
+        child: Text("Logout drive"),
+        onPressed: () async {
+          Navigator.of(context, rootNavigator: true).pop();
+          await storage.delete(key: "type");
+          await storage.delete(key: "data");
+          await storage.delete(key: "expiry");
+          await storage.delete(key: "refreshToken");
+          showInSnackBar("Logged out from drive");
+        });
+    Widget logoutDropbox = FlatButton(
+        child: Text("Logout dropbox"),
+        onPressed: () async {
+          Navigator.of(context, rootNavigator: true).pop();
+          setState(() {
+            accessToken = null;
+          });
+          await storage.delete(key: "dropboxAccessToken");
+          showInSnackBar("Logged out from dropbox");
+          await Dropbox.unlink();
+        });
     Widget saveLocal = FlatButton(
         child: Text("Save Locally"),
         onPressed: () async {
+          Navigator.of(context, rootNavigator: true).pop();
           if (fileName != "") {
-            Navigator.of(context, rootNavigator: true).pop();
             saveImage();
           } else {
             showInSnackBar("Invalid file name");
@@ -448,8 +470,8 @@ class _EditState extends State<Edit> {
     Widget uploadBox = FlatButton(
         child: Text("Upload to dropbox"),
         onPressed: () async {
+          Navigator.of(context, rootNavigator: true).pop();
           if (fileName != "") {
-            Navigator.of(context, rootNavigator: true).pop();
             uploadDropBox();
           } else {
             showInSnackBar("Invalid file name");
@@ -466,12 +488,19 @@ class _EditState extends State<Edit> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text("File Name"),
-            TextField(
+            TextFormField(
+              initialValue: fileName,
               onChanged: (text) {
                 setState(() {
                   fileName = text;
                 });
               },
+            ),
+            saveLocal,
+            uploadBox,
+            uploadGdrive,
+            Row(
+              children: [logoutDropbox, logoutDrive],
             )
           ]),
     );
@@ -479,7 +508,9 @@ class _EditState extends State<Edit> {
     // set up the AlertDialog
     AlertDialog alert = AlertDialog(
       title: Text("Enter File Name"),
-      actions: [cancelButton, saveLocal, uploadGdrive, uploadBox],
+      actions: [
+        cancelButton,
+      ],
       content: field,
     );
 
@@ -688,6 +719,7 @@ class Oval {
   }
 }
 
+//canvas
 class ImageEditor extends CustomPainter {
   ui.Image image;
   List<Oval> objects = new List();
