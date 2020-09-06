@@ -388,7 +388,14 @@ class _EditState extends State<Edit> {
               _height, editText, angle);
           setState(() {
             objects.add(o);
+            editText = "";
           });
+        } else {
+          if (editText == null || editText == "") {
+            showInSnackBar("Text cannot be empty");
+          } else {
+            showInSnackBar("Please select a color");
+          }
         }
 
         Navigator.of(context, rootNavigator: true).pop();
@@ -427,6 +434,7 @@ class _EditState extends State<Edit> {
 
   showSaveFileAlertDialog() {
     Widget uploadGdrive = FlatButton(
+        color: Colors.green,
         child: Text("Upload to drive"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
@@ -437,6 +445,7 @@ class _EditState extends State<Edit> {
           }
         });
     Widget logoutDrive = FlatButton(
+        color: Colors.blueGrey,
         child: Text("Logout drive"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
@@ -447,6 +456,7 @@ class _EditState extends State<Edit> {
           showInSnackBar("Logged out from drive");
         });
     Widget logoutDropbox = FlatButton(
+        color: Colors.blueGrey,
         child: Text("Logout dropbox"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
@@ -458,6 +468,7 @@ class _EditState extends State<Edit> {
           await Dropbox.unlink();
         });
     Widget saveLocal = FlatButton(
+        color: Colors.teal,
         child: Text("Save Locally"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
@@ -468,6 +479,7 @@ class _EditState extends State<Edit> {
           }
         });
     Widget uploadBox = FlatButton(
+        color: Colors.blueAccent,
         child: Text("Upload to dropbox"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
@@ -478,6 +490,7 @@ class _EditState extends State<Edit> {
           }
         });
     Widget cancelButton = FlatButton(
+      color: Colors.red,
       child: Text("Cancel"),
       onPressed: () {
         Navigator.of(context, rootNavigator: true).pop();
@@ -500,14 +513,23 @@ class _EditState extends State<Edit> {
             uploadBox,
             uploadGdrive,
             Row(
-              children: [logoutDropbox, logoutDrive],
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(5.0),
+                  child: logoutDropbox,
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(5.0),
+                  child: logoutDrive,
+                )
+              ],
             )
           ]),
     );
 
     // set up the AlertDialog
     AlertDialog alert = AlertDialog(
-      title: Text("Enter File Name"),
+      title: Text("File options"),
       actions: [
         cancelButton,
       ],
@@ -596,18 +618,23 @@ class _EditState extends State<Edit> {
                             },
                             onTapDown: (details) {
                               if (editMode) {
-                                final index = objects.lastIndexWhere((obj) {
-                                  final rect = Rect.fromCenter(
-                                      center: Offset(obj.x, obj.y),
-                                      height: obj.height,
-                                      width: obj.width);
-                                  return rect.contains(Offset(
-                                      details.localPosition.dx,
-                                      details.localPosition.dy));
-                                });
-                                setState(() {
-                                  selectedIndex = index;
-                                });
+                                if (objects.length > 0) {
+                                  final index = objects.lastIndexWhere((obj) {
+                                    final rect = Rect.fromCenter(
+                                        center: Offset(obj.x, obj.y),
+                                        height: obj.height,
+                                        width: obj.width);
+                                    return rect.contains(Offset(
+                                        details.localPosition.dx,
+                                        details.localPosition.dy));
+                                  });
+                                  setState(() {
+                                    selectedIndex = index;
+                                  });
+                                } else {
+                                  selectedIndex = -1;
+                                  showInSnackBar("No points available");
+                                }
                               }
                             },
                             onTap: () {
@@ -616,7 +643,7 @@ class _EditState extends State<Edit> {
                                   editText = "";
                                   pickerColor = null;
                                 });
-                                showEditAlertDialog();
+                                if (selectedIndex != -1) showEditAlertDialog();
                               }
                             },
                             child: Stack(
@@ -750,31 +777,37 @@ class ImageEditor extends CustomPainter {
   void drawText(Canvas context, String name, double x, double y,
       double angleRotationInRadians, double width, double height) {
     double fontSize = 0;
-    if (angleRotationInRadians == 0) {
-      fontSize = width * 0.2;
+    double maxWidth = 0;
+    if (width > height) {
+      fontSize = width * 0.1;
+      maxWidth = width;
     } else {
-      fontSize = height * 0.2;
+      fontSize = height * 0.1;
+      maxWidth = height;
     }
     TextSpan span = new TextSpan(
         style: new TextStyle(
             color: Colors.white, fontSize: fontSize, fontFamily: 'Roboto'),
         text: name);
     TextPainter tp = new TextPainter(
+        textScaleFactor: 1,
         text: span,
         textAlign: TextAlign.left,
         textDirection: TextDirection.ltr);
-    tp.layout();
+
+    tp.layout(maxWidth: maxWidth);
 
     context.save();
+
     const double pi = 3.1415926535897932;
     if (height > width) {
-      context.translate(x + span.style.fontSize * 0.5, y - span.style.fontSize);
+      context.translate(x + tp.width * 0.1, y - tp.height);
     } else {
-      context.translate(
-          x - (span.style.fontSize), y - (span.style.fontSize * 0.5));
+      context.translate(x - (tp.width * 0.5), y - (tp.height * 0.5));
     }
 
     context.rotate(angleRotationInRadians * (pi / 180));
+
     tp.paint(context, new Offset(0.0, 0.0));
 
     context.restore();
