@@ -16,6 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Galileo',
       theme: ThemeData(
         primaryColor: Colors.red[200],
@@ -41,15 +42,17 @@ class _MyHomePageState extends State<MyHomePage> {
   double height;
   Future getImage() async {
     final pickedFile = await picker.getImage(source: ImageSource.gallery);
-    setState(() {
-      _image = File(pickedFile.path);
-      Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => Edit(
-                    image: _image,
-                  )));
-    });
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => Edit(
+                      image: _image,
+                    )));
+      });
+    }
   }
 
   @override

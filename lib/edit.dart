@@ -227,7 +227,7 @@ class _EditState extends State<Edit> {
           title: const Text('Pick a color!'),
           content: SingleChildScrollView(
             child: BlockPicker(
-              pickerColor: currentColor,
+              pickerColor: currentColor == null ? Colors.red : currentColor,
               onColorChanged: changeColor,
             ),
           ),
@@ -327,8 +327,8 @@ class _EditState extends State<Edit> {
           if (editText != "") {
             obj.text = editText;
           }
-          if (pickerColor != null) {
-            obj.color = pickerColor;
+          if (currentColor != null) {
+            obj.color = currentColor;
           }
         });
         Navigator.of(context, rootNavigator: true).pop();
@@ -383,8 +383,8 @@ class _EditState extends State<Edit> {
         double yPosUpdated = yPos + _image.height.toDouble() * 0.045;
         int angle = 0;
         if (_height > _width) angle = 90;
-        if (editText != "" && pickerColor != null) {
-          Oval o = new Oval(pickerColor, xPosUpdated, yPosUpdated, _width,
+        if (editText != "" && currentColor != null) {
+          Oval o = new Oval(currentColor, xPosUpdated, yPosUpdated, _width,
               _height, editText, angle);
           setState(() {
             objects.add(o);
@@ -641,7 +641,7 @@ class _EditState extends State<Edit> {
                               if (editMode) {
                                 setState(() {
                                   editText = "";
-                                  pickerColor = null;
+                                  currentColor = null;
                                 });
                                 if (selectedIndex != -1) showEditAlertDialog();
                               }
