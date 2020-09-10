@@ -435,7 +435,7 @@ class _EditState extends State<Edit> {
   showSaveFileAlertDialog() {
     Widget uploadGdrive = FlatButton(
         color: Colors.green,
-        child: Text("Upload to drive"),
+        child: Text("Upload to Drive"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
           if (fileName != "") {
@@ -446,7 +446,7 @@ class _EditState extends State<Edit> {
         });
     Widget logoutDrive = FlatButton(
         color: Colors.blueGrey,
-        child: Text("Logout drive"),
+        child: Text("Logout Drive"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
           await storage.delete(key: "type");
@@ -457,7 +457,7 @@ class _EditState extends State<Edit> {
         });
     Widget logoutDropbox = FlatButton(
         color: Colors.blueGrey,
-        child: Text("Logout dropbox"),
+        child: Text("Logout Dropbox"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
           setState(() {
@@ -480,7 +480,7 @@ class _EditState extends State<Edit> {
         });
     Widget uploadBox = FlatButton(
         color: Colors.blueAccent,
-        child: Text("Upload to dropbox"),
+        child: Text("Upload to Dropbox"),
         onPressed: () async {
           Navigator.of(context, rootNavigator: true).pop();
           if (fileName != "") {
@@ -510,8 +510,8 @@ class _EditState extends State<Edit> {
               },
             ),
             saveLocal,
-            uploadBox,
             uploadGdrive,
+            uploadBox,
             Row(
               children: [
                 Padding(
@@ -642,6 +642,7 @@ class _EditState extends State<Edit> {
                                 setState(() {
                                   editText = "";
                                   currentColor = null;
+                                  pickerColor = null;
                                 });
                                 if (selectedIndex != -1) showEditAlertDialog();
                               }
@@ -779,10 +780,10 @@ class ImageEditor extends CustomPainter {
     double fontSize = 0;
     double maxWidth = 0;
     if (width > height) {
-      fontSize = width * 0.1;
+      fontSize = width * 0.3;
       maxWidth = width;
     } else {
-      fontSize = height * 0.1;
+      fontSize = height * 0.3;
       maxWidth = height;
     }
     TextSpan span = new TextSpan(
