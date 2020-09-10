@@ -35,7 +35,6 @@ class _EditState extends State<Edit> {
   //touch positions on screen
   double xPos = 0.0;
   double yPos = 0.0;
-  double temp, humidity;
   double _width = 10;
   double _height = 10;
   int selectedIndex = -1;
